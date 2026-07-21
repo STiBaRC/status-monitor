@@ -1,0 +1,16 @@
+{
+	"devDependencies": {
+		"sprucehttp_sjs": "^2.2.5"
+	},
+	"type": "module",
+	"prettier": {
+		"semi": true,
+		"singleQuote": false,
+		"tabWidth": 4,
+		"useTabs": true,
+		"trailingComma": "none",
+		"bracketSpacing": true,
+		"arrowParens": "always",
+		"printWidth": 80
+	}
+}

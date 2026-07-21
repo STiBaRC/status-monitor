@@ -1,0 +1,4 @@
+node_modules/
+statusConfig.json
+spruceConfig.json
+batch/statusDB.sqlite3
