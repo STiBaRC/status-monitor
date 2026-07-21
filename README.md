@@ -89,9 +89,10 @@ See [types/config.js](types/config.js) for JSDoc syntax
 1. Install [SpruceHTTP](https://sprucehttp.com/download)
 2. Set up your [site](https://sprucehttp.com/documentation#localsite) to have "sjs" and "esmSJS" set to true
 3. Extract the contents of this repo somewhere on your server
-4. Point your site to the "web" folder of the repo
-5. Set up a cron job to run [batch/statusBatch.js](batch/statusBatch.js) however often you'd like
-6. Done!
+4. Create a [config](#config-format) and place it at the root of the cloned repo with the name `statusConfig.json`
+5. Point your site to the "web" folder of the repo
+6. Set up a cron job to run [batch/statusBatch.js](batch/statusBatch.js) however often you'd like
+7. Done!
 
 ## Example cron
 ```
