@@ -308,7 +308,7 @@ function millisecondsToReadableTime(time) {
 /**
  * Indicate if any status has changed, so we can send a report if necessary
  */
-let anyChanged = false;
+let monitorsChanged = [];
 
 /**
  * Checks a monitor's status
@@ -367,8 +367,9 @@ async function checkMonitor(monitorId) {
 
 	if (!result.success && !wasDownBefore) {
 		// Notify of outage
-		anyChanged = true;
+		monitorsChanged.push(monitorId);
 		for (const notification of config.notifications) {
+			if (!notification.monitors.includes(monitorId)) continue;
 			try {
 				switch (notification.pushType) {
 					case "ntfy":
@@ -392,7 +393,7 @@ async function checkMonitor(monitorId) {
 
 	if (result.success && wasDownBefore) {
 		// Notify of restored service
-		anyChanged = true;
+		monitorsChanged.push(monitorId);
 		// Find the last good status, if one exists
 		/**
 		 * @type {StatusRow}
@@ -477,7 +478,7 @@ if (pendingMonitorChecks.length > 0) {
 	pendingMonitorChecks.length = 0;
 }
 
-if (anyChanged) {
+if (monitorsChanged.length > 0) {
 	// Send an aggregate of statuses
 	// Get statuses for each monitor
 	const statuses = [];
@@ -500,6 +501,7 @@ if (anyChanged) {
 	}
 
 	for (const notification of config.notifications) {
+		if (!notification.monitors.some(monitorId => monitorsChanged.includes(monitorId))) continue;
 		try {
 			switch (notification.pushType) {
 				case "discord":
