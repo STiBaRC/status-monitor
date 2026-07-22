@@ -85,7 +85,7 @@ startTimestamp =
 	(config.data.daysToShow - 1) * MILLISECONDS_PER_DAY;
 
 for (const monitorId of siteConfig.monitors) {
-	body += `<h2 id="${htmlEscape(monitorId)}">${htmlEscape(config.monitors[monitorId].name)}</h2>\n`;
+	body += `<h2 id="${htmlEscape(monitorId)}">${htmlEscape(config.monitors[monitorId].name)}</h2>\n<div style="font-size: 0px">\n`;
 	let startTime = startTimestamp;
 	let endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
 	for (let i = 0; i < config.data.daysToShow; i++) {
@@ -128,6 +128,7 @@ for (const monitorId of siteConfig.monitors) {
 		startTime += MILLISECONDS_PER_DAY;
 		endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
 	}
+	body += "</div\n";
 }
 
 const placeholders = siteConfig.monitors.map(() => "?").join(", ");
