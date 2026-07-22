@@ -148,7 +148,7 @@ function checkTcpPort(target, targetPort, timeout) {
 		const start = performance.now();
 		const socket = new Socket();
 
-		socket.setTimeout(timeout * 1000 ?? 5000); // 5 seconds default
+		socket.setTimeout((timeout ?? 5) * 1000); // 5 seconds default
 
 		socket.connect(targetPort, target, () => {
 			const end = performance.now();
@@ -187,7 +187,7 @@ async function checkHttp(target, timeout) {
 	try {
 		const start = performance.now();
 		const fetchResult = await fetch(target, {
-			signal: AbortSignal.timeout(timeout ?? 5000)
+			signal: AbortSignal.timeout((timeout ?? 5) * 1000)  // 5 seconds default
 		});
 
 		if (!fetchResult.ok) {
