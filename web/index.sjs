@@ -128,7 +128,7 @@ for (const monitorId of siteConfig.monitors) {
 		startTime += MILLISECONDS_PER_DAY;
 		endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
 	}
-	body += "</div\n";
+	body += "</div>\n";
 }
 
 const placeholders = siteConfig.monitors.map(() => "?").join(", ");
