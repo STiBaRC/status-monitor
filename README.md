@@ -28,13 +28,15 @@ See [types/config.js](types/config.js) for JSDoc syntax
 		{
 			"pushType": "ntfy", // Type of notification this is, this is a Ntfy notification
 			"server": "https://ntfy.sh", // Ntfy server to use, defaults to ntfy.sh
-			"topic": "custom_status-nonce" // Ntfy topic to send to, set to something unique
+			"topic": "custom_status-nonce", // Ntfy topic to send to, set to something unique
+			"monitors": ["router", "server_ssh"] // Monitors to notify for
 		},
 		{
 			"pushType": "discord", // Type of notification this is, this is a Discord notification
 			"username": "System Status", // Bot username
 			"avatarUrl": "https://status.example.com/StatusPageIcon.png", // Avatar URL to use
-			"webhook": "https://discord.com/api/webhooks/1001020102401/fakeurl" // Webhook URL
+			"webhook": "https://discord.com/api/webhooks/1001020102401/fakeurl", // Webhook URL
+			"monitors": ["blog"] // Monitors to notify for
 		}
 	],
 	"monitors": {

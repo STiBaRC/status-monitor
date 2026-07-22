@@ -21,6 +21,7 @@
  * @property {"ntfy"} pushType The type of push notification
  * @property {string} server What Ntfy server to use ("https://ntfy.sh" if unsure)
  * @property {string} topic The Ntfy topic to send to
+ * @property {string[]} monitors List of monitors to be notify for
  */
 
 /**
@@ -29,6 +30,7 @@
  * @property {string} username What username to send as
  * @property {string} avatarUrl What avatar to use
  * @property {string} webhook The Discord webhook URL
+ * @property {string[]} monitors List of monitors to be notify for
  */
 
 /**

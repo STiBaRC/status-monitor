@@ -424,6 +424,7 @@ async function checkMonitor(monitorId) {
 		const deltaTime = new Date().getTime() - firstBadStatus.time;
 		const time = millisecondsToReadableTime(deltaTime);
 		for (const notification of config.notifications) {
+			if (!notification.monitors.includes(monitorId)) continue;
 			try {
 				switch (notification.pushType) {
 					case "ntfy":
@@ -492,32 +493,37 @@ if (anyChanged) {
 			.get(monitorId);
 		const status = !lastStatus ? undefined : lastStatus.status === 1;
 		statuses.push({
+			monitorId,
 			name: monitor.name,
 			status: status
 		});
 	}
-	const discordStatusReport = statuses
-		.map((s) => {
-			let returnString = "";
-			switch (s.status) {
-				case undefined:
-					returnString += ":white_circle: ";
-					break;
-				case true:
-					returnString += ":green_circle: ";
-					break;
-				case false:
-					returnString += ":red_circle: ";
-					break;
-			}
-			returnString += s.name;
-			return returnString;
-		})
-		.join("\n");
+
 	for (const notification of config.notifications) {
 		try {
 			switch (notification.pushType) {
 				case "discord":
+					const discordStatusReport = statuses
+						.filter((s) =>
+							notification.monitors.includes(s.monitorId)
+						) // Filter out monitors that belong to this notification channel
+						.map((s) => {
+							let returnString = "";
+							switch (s.status) {
+								case undefined:
+									returnString += ":white_circle: ";
+									break;
+								case true:
+									returnString += ":green_circle: ";
+									break;
+								case false:
+									returnString += ":red_circle: ";
+									break;
+							}
+							returnString += s.name;
+							return returnString;
+						})
+						.join("\n");
 					await discordNotify(notification, {
 						title: `Status Report`,
 						body: discordStatusReport,
