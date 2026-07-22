@@ -140,14 +140,15 @@ function checkPing(target) {
  * Check that a TCP port is open
  * @param {string} target Hostname to connect to
  * @param {number} targetPort Port to connect to
+ * @param {number?} timeout Time to wait for socket
  * @returns {Promise<Result>}
  */
-function checkTcpPort(target, targetPort) {
+function checkTcpPort(target, targetPort, timeout) {
 	return new Promise((resolve) => {
 		const start = performance.now();
 		const socket = new Socket();
 
-		socket.setTimeout(2000); // 2 seconds
+		socket.setTimeout(timeout * 1000 ?? 5000); // 5 seconds default
 
 		socket.connect(targetPort, target, () => {
 			const end = performance.now();
@@ -179,12 +180,15 @@ function checkTcpPort(target, targetPort) {
 /**
  * Check that a target URL resolves and returns a success status code
  * @param {string} target URL to check
+ * @param {number?} timeout Time to wait for response
  * @returns {Promise<Result>}
  */
-async function checkHttp(target) {
+async function checkHttp(target, timeout) {
 	try {
 		const start = performance.now();
-		const fetchResult = await fetch(target);
+		const fetchResult = await fetch(target, {
+			signal: AbortSignal.timeout(timeout ?? 5000)
+		});
 
 		if (!fetchResult.ok) {
 			return {
@@ -339,13 +343,14 @@ async function checkMonitor(monitorId) {
 				case "tcp":
 					result = await checkTcpPort(
 						monitor.target,
-						monitor.targetPort
+						monitor.targetPort,
+						monitor.timeout
 					);
 					break;
 			}
 			break;
 		case "http":
-			result = await checkHttp(monitor.target);
+			result = await checkHttp(monitor.target, monitor.timeout);
 			break;
 	}
 

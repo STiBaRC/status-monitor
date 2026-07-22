@@ -53,6 +53,7 @@
  * @property {string} target The target of the monitor
  * @property {number} targetPort The target port of the monitor
  * @property {"tcp"} protocol Currently only TCP, UDP may be supported later
+ * @property {number} timeout Time to wait for monitor to time out. Defaults to 5 seconds.
  */
 
 /**
@@ -61,6 +62,7 @@
  * @property {string} name The monitor display name
  * @property {"http"} type The monitor type
  * @property {string} target The target of the monitor
+ * @property {number} timeout Time to wait for monitor to time out. Defaults to 5 seconds.
  */
 
 /**

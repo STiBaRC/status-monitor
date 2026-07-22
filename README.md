@@ -52,7 +52,8 @@ See [types/config.js](types/config.js) for JSDoc syntax
 			"active": true, // Whether the monitor is active, this one is
 			"name": "Personal blog", // Display name of the monitor
 			"type": "http", // Type of monitor this is, this is a HTTP monitor
-			"target": "https://blog.example.com" // Target of the monitor, a URL in this case
+			"target": "https://blog.example.com", // Target of the monitor, a URL in this case
+			"timeout": 5 // This monitor type supports timeout setting. Set the time in seconds until the monitor is considered timed-out.
 		},
 		"server_ssh": {
 			// ID of the monitor
@@ -61,7 +62,8 @@ See [types/config.js](types/config.js) for JSDoc syntax
 			"type": "port", // Type of monitor this is, this is a TCP port monitor
 			"target": "192.168.1.2", // Target of the monitor, an IP address in this case
 			"targetPort": 22, // Target port of the port monitor
-			"protocol": "tcp" // Protocol of the port. This is always tcp, as udp is not yet supported
+			"protocol": "tcp", // Protocol of the port. This is always tcp, as udp is not yet supported
+			"timeout": 5 // This monitor type supports timeout setting. Set the time in seconds until the monitor is considered timed-out.
 		}
 	},
 	"sites": {
