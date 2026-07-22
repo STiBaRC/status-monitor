@@ -85,19 +85,24 @@ startTimestamp =
 	(config.data.daysToShow - 1) * MILLISECONDS_PER_DAY;
 
 for (const monitorId of siteConfig.monitors) {
-	/**
-	 * @type {StatusRow}
-	 */
-	const monitorLastStatus = db
-		.prepare(
-			`SELECT * FROM statuses WHERE monitor = ? ORDER BY time DESC LIMIT 1`
-		)
-		.get(monitorId);
-	let statusColor = "#ff0000";
-	let statusText = "Down";
-	if (monitorLastStatus.status === 1) {
-		statusColor = "#00ff00";
-		statusText = "Up";
+	let statusColor = "#999999";
+	let statusText = "Disabled";
+	if (config.monitors[monitorId].active) {
+		/**
+		 * @type {StatusRow}
+		 */
+		const monitorLastStatus = db
+			.prepare(
+				`SELECT * FROM statuses WHERE monitor = ? ORDER BY time DESC LIMIT 1`
+			)
+			.get(monitorId);
+		if (monitorLastStatus.status === 1) {
+			statusColor = "#00ff00";
+			statusText = "Up";
+		} else {
+			statusColor = "#ff0000";
+			statusText = "Down";
+		}
 	}
 	body += `<h2 id="${htmlEscape(monitorId)}"><div style="display: inline-block; margin-right: 5px; width: 20px; height: 20px; border-radius: 50%; background-color: ${htmlEscape(statusColor)};" title="${htmlEscape(statusText)}"></div>${htmlEscape(config.monitors[monitorId].name)}</h2>\n<div style="font-size: 0px">\n`;
 	let startTime = startTimestamp;
