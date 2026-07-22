@@ -153,7 +153,7 @@ function checkTcpPort(target, targetPort) {
 			const end = performance.now();
 			resolve({
 				success: true,
-				latency: end - start
+				latency: (end - start) | 0 // Cast to normal number
 			});
 			socket.destroy();
 		});
@@ -194,7 +194,10 @@ async function checkHttp(target) {
 		}
 
 		const end = performance.now();
-		return { success: true, latency: end - start };
+		return {
+			success: true,
+			latency: (end - start) | 0 // Cast to normal number
+		};
 	} catch (e) {
 		let errorCode = null;
 
