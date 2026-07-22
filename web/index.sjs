@@ -90,7 +90,7 @@ for (const monitorId of siteConfig.monitors) {
 	 */
 	const monitorLastStatus = db
 		.prepare(
-			`SELECT * FROM statuses WHERE monitor ? ORDER BY time DESC LIMIT 1`
+			`SELECT * FROM statuses WHERE monitor = ? ORDER BY time DESC LIMIT 1`
 		)
 		.get(monitorId);
 	let statusColor = "#ff0000";
