@@ -100,6 +100,14 @@ for (const monitorId of siteConfig.monitors) {
 				`SELECT * FROM statuses WHERE monitor = ? AND status = 0 AND time >= ? AND time <= ?`
 			)
 			.all(monitorId, startTime, endTime).length;
+		/**
+		 * @type {number}
+		 */
+		const averageLatency = db
+			.prepare(
+				`SELECT AVG(latency) AS average_latency FROM statuses WHERE monitor = ? AND status = 1 AND latency IS NOT NULL AND time >= ? AND time <= ?`
+			)
+			.get(monitorId, startTime, endTime).average_latency;
 		// Fallback color for no data
 		let color = "#999999";
 		// Block title
@@ -110,6 +118,9 @@ for (const monitorId of siteConfig.monitors) {
 				(goodStatuses / (goodStatuses + badStatuses)) * 100;
 			color = percentageToColor(percentage);
 			title = `${new Date(startTime).toUTCString().replace(" 00:00:00", "")} - ${Math.round(percentage)}%`;
+		}
+		if (averageLatency !== null) {
+			title += ` - ${Math.round(averageLatency)} ms`;
 		}
 		// Insert colored rectangle
 		body += `<div style="display: inline-block; margin-right: 1px; height: 25px; width: 10px; background-color: ${htmlEscape(color)};" title="${htmlEscape(title)}"></div>`;

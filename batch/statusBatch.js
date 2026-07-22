@@ -144,13 +144,16 @@ function checkPing(target) {
  */
 function checkTcpPort(target, targetPort) {
 	return new Promise((resolve) => {
+		const start = performance.now();
 		const socket = new Socket();
 
 		socket.setTimeout(2000); // 2 seconds
 
 		socket.connect(targetPort, target, () => {
+			const end = performance.now();
 			resolve({
-				success: true
+				success: true,
+				latency: end - start
 			});
 			socket.destroy();
 		});
@@ -180,6 +183,7 @@ function checkTcpPort(target, targetPort) {
  */
 async function checkHttp(target) {
 	try {
+		const start = performance.now();
 		const fetchResult = await fetch(target);
 
 		if (!fetchResult.ok) {
@@ -189,7 +193,8 @@ async function checkHttp(target) {
 			};
 		}
 
-		return { success: true };
+		const end = performance.now();
+		return { success: true, latency: end - start };
 	} catch (e) {
 		let errorCode = null;
 
@@ -501,7 +506,12 @@ if (monitorsChanged.length > 0) {
 	}
 
 	for (const notification of config.notifications) {
-		if (!notification.monitors.some(monitorId => monitorsChanged.includes(monitorId))) continue;
+		if (
+			!notification.monitors.some((monitorId) =>
+				monitorsChanged.includes(monitorId)
+			)
+		)
+			continue;
 		try {
 			switch (notification.pushType) {
 				case "discord":
