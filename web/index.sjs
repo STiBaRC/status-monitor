@@ -85,7 +85,7 @@ startTimestamp =
 	(config.data.daysToShow - 1) * MILLISECONDS_PER_DAY;
 
 for (const monitorId of siteConfig.monitors) {
-	body += `<h2 id="${htmlEscape(monitorId)}">${htmlEscape(config.monitors[monitorId].name)}</h2>`;
+	body += `<h2 id="${htmlEscape(monitorId)}">${htmlEscape(config.monitors[monitorId].name)}</h2>\n`;
 	let startTime = startTimestamp;
 	let endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
 	for (let i = 0; i < config.data.daysToShow; i++) {
@@ -123,7 +123,7 @@ for (const monitorId of siteConfig.monitors) {
 			title += ` - ${Math.round(averageLatency)} ms`;
 		}
 		// Insert colored rectangle
-		body += `<div style="display: inline-block; margin-right: 1px; height: 25px; width: 10px; background-color: ${htmlEscape(color)};" title="${htmlEscape(title)}"></div>`;
+		body += `<div style="display: inline-block; margin-right: 1px; height: 25px; width: 10px; background-color: ${htmlEscape(color)};" title="${htmlEscape(title)}"></div>\n`;
 		// Increase start and end time
 		startTime += MILLISECONDS_PER_DAY;
 		endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
