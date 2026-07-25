@@ -1,6 +1,6 @@
 import sjs from "sprucehttp_sjs";
-import { readFile } from "fs/promises";
-import { join } from "path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import "../types/config.js";
 import "../types/db.js";
