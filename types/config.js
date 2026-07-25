@@ -52,7 +52,7 @@
  * @property {"port"} type The monitor type
  * @property {string} target The target of the monitor
  * @property {number} targetPort The target port of the monitor
- * @property {"tcp"} protocol Currently only TCP, UDP may be supported later
+ * @property {"tcp" | "tcptls"} protocol Currently only tcp or tcptls; UDP may be supported later
  * @property {number} timeout Time to wait for monitor to time out. Defaults to 5 seconds.
  */
 

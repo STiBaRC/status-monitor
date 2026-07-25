@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { access, readFile } from "fs/promises";
-import { join } from "path";
+import { access, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { exec } from "child_process";
-import { Socket } from "net";
+import { exec } from "node:child_process";
+import net from "node:net";
+import tls from "node:tls";
 import "../types/config.js";
 import "../types/db.js";
 import "../types/result.js";
@@ -146,11 +147,52 @@ function checkPing(target) {
 function checkTcpPort(target, targetPort, timeout) {
 	return new Promise((resolve) => {
 		const start = performance.now();
-		const socket = new Socket();
+		const socket = net.connect(targetPort, target, {
+			timeout: (timeout ?? 5) * 1000 // 5 seconds default
+		});
 
-		socket.setTimeout((timeout ?? 5) * 1000); // 5 seconds default
+		socket.on("connect", () => {
+			const end = performance.now();
+			resolve({
+				success: true,
+				latency: (end - start) | 0 // Cast to normal number
+			});
+			socket.destroy();
+		});
 
-		socket.connect(targetPort, target, () => {
+		socket.on("error", (e) => {
+			console.log(e);
+			resolve({
+				success: false
+			});
+			socket.destroy();
+		});
+
+		socket.on("timeout", () => {
+			resolve({
+				success: false,
+				errorCode: "TIMEOUT"
+			});
+			socket.destroy();
+		});
+	});
+}
+
+/**
+ * Check that a TLS/TCP port is open
+ * @param {string} target Hostname to connect to
+ * @param {number} targetPort Port to connect to
+ * @param {number?} timeout Time to wait for socket
+ * @returns {Promise<Result>}
+ */
+function checkTcpTlsPort(target, targetPort, timeout) {
+	return new Promise((resolve) => {
+		const start = performance.now();
+		const socket = tls.connect(targetPort, target, {
+			timeout: (timeout ?? 5) * 1000 // 5 seconds default
+		});
+
+		socket.on("secureConnect", () => {
 			const end = performance.now();
 			resolve({
 				success: true,
@@ -187,7 +229,7 @@ async function checkHttp(target, timeout) {
 	try {
 		const start = performance.now();
 		const fetchResult = await fetch(target, {
-			signal: AbortSignal.timeout((timeout ?? 5) * 1000)  // 5 seconds default
+			signal: AbortSignal.timeout((timeout ?? 5) * 1000) // 5 seconds default
 		});
 
 		if (!fetchResult.ok) {
@@ -342,6 +384,13 @@ async function checkMonitor(monitorId) {
 			switch (monitor.protocol) {
 				case "tcp":
 					result = await checkTcpPort(
+						monitor.target,
+						monitor.targetPort,
+						monitor.timeout
+					);
+					break;
+				case "tcptls":
+					result = await checkTcpTlsPort(
 						monitor.target,
 						monitor.targetPort,
 						monitor.timeout
