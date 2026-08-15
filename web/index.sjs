@@ -109,11 +109,17 @@ for (const monitorId of siteConfig.monitors) {
 	let endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
 	for (let i = 0; i < config.data.daysToShow; i++) {
 		// Compute uptime percentage
+		/**
+		 * @type {number}
+		 */
 		const goodStatuses = db
 			.prepare(
 				`SELECT COUNT(time) AS good_statuses FROM statuses WHERE monitor = ? AND status = 1 AND time >= ? AND time <= ?`
 			)
 			.get(monitorId, startTime, endTime).good_statuses;
+		/**
+		 * @type {number}
+		 */
 		const badStatuses = db
 			.prepare(
 				`SELECT COUNT(time) AS bad_statuses FROM statuses WHERE monitor = ? AND status = 0 AND time >= ? AND time <= ?`
