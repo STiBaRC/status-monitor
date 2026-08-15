@@ -111,14 +111,14 @@ for (const monitorId of siteConfig.monitors) {
 		// Compute uptime percentage
 		const goodStatuses = db
 			.prepare(
-				`SELECT * FROM statuses WHERE monitor = ? AND status = 1 AND time >= ? AND time <= ?`
+				`SELECT COUNT(time) AS good_statuses FROM statuses WHERE monitor = ? AND status = 1 AND time >= ? AND time <= ?`
 			)
-			.all(monitorId, startTime, endTime).length;
+			.get(monitorId, startTime, endTime).good_statuses;
 		const badStatuses = db
 			.prepare(
-				`SELECT * FROM statuses WHERE monitor = ? AND status = 0 AND time >= ? AND time <= ?`
+				`SELECT COUNT(time) AS bad_statuses FROM statuses WHERE monitor = ? AND status = 0 AND time >= ? AND time <= ?`
 			)
-			.all(monitorId, startTime, endTime).length;
+			.get(monitorId, startTime, endTime).bad_statuses;
 		/**
 		 * @type {number}
 		 */
