@@ -2,3 +2,4 @@ node_modules/
 statusConfig.json
 spruceConfig.json
 batch/statusDB.sqlite3
+batch/statusDB.sqlite3*

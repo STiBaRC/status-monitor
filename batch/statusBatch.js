@@ -28,6 +28,9 @@ try {
 
 // Open database
 const db = new DatabaseSync(DB_PATH);
+db.exec(
+	"PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;"
+);
 
 // Initialize DB if it didn't exist
 if (!dbExists) {
@@ -39,6 +42,22 @@ if (!dbExists) {
 		error_code TEXT,
 		PRIMARY KEY (time, monitor)
 	) STRICT;`);
+	db.exec(
+		`CREATE INDEX IF NOT EXISTS idx_statuses_monitor_time ON statuses (monitor, time, status, latency);`
+	);
+}
+
+// Check if index exists, create it if not
+const indexExists =
+	db
+		.prepare(
+			"SELECT * FROM sqlite_master WHERE type = 'index' AND tbl_name = 'statuses' AND name = 'idx_statuses_monitor_time';"
+		)
+		.get() !== undefined;
+if (!indexExists) {
+	db.exec(
+		`CREATE INDEX IF NOT EXISTS idx_statuses_monitor_time ON statuses (monitor, time, status, latency);`
+	);
 }
 
 // Read config file
@@ -57,7 +76,7 @@ const config = JSON.parse(
 function checkPing(target) {
 	return new Promise((resolve) => {
 		if (process.platform === "win32") {
-			exec(`ping -n 1 ${target}`, (error, stdout, stderr) => {
+			exec(`ping -n 1 ${target}`, (error, stdout, _stderr) => {
 				if (stdout.startsWith("Ping request could not find host")) {
 					resolve({
 						success: false,
@@ -85,16 +104,18 @@ function checkPing(target) {
 				}
 				if (error) {
 					resolve({
-						success: false
+						success: false,
+						errorCode: error.code ?? error.name
 					});
 					return;
 				}
 				resolve({
-					success: false
+					success: false,
+					errorCode: "NOOUTPUT"
 				});
 			});
 		} else {
-			exec(`ping -c 1 ${target}`, (error, stdout, stderr) => {
+			exec(`ping -c 1 ${target}`, (error, stdout, _stderr) => {
 				if (stdout.includes("Name or service not known")) {
 					resolve({
 						success: false,
@@ -125,12 +146,14 @@ function checkPing(target) {
 				}
 				if (error) {
 					resolve({
-						success: false
+						success: false,
+						errorCode: error.code ?? error.name
 					});
 					return;
 				}
 				resolve({
-					success: false
+					success: false,
+					errorCode: "NOOUTPUT"
 				});
 			});
 		}
@@ -163,7 +186,8 @@ function checkTcpPort(target, targetPort, timeout) {
 		socket.on("error", (e) => {
 			console.log(e);
 			resolve({
-				success: false
+				success: false,
+				errorCode: e.code ?? e.name
 			});
 			socket.destroy();
 		});
@@ -204,7 +228,8 @@ function checkTcpTlsPort(target, targetPort, timeout) {
 		socket.on("error", (e) => {
 			console.log(e);
 			resolve({
-				success: false
+				success: false,
+				errorCode: e.code ?? e.name
 			});
 			socket.destroy();
 		});

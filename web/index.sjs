@@ -22,20 +22,29 @@ process.on("unhandledRejection", fail);
 /**
  * Generates a color hex value that represents the percentage, with red being 0 and green being 100
  * @param {number} percentage Number between 0 and 100
+ * @param {number} midpoint Percentage where the color should be yellow
  * @returns {string} CSS color hex
  */
-function percentageToColor(percentage) {
+function percentageToColor(percentage, midpoint = 98) {
+	// Clamp inputs to valid values
+	const percent = Math.max(0, Math.min(100, percentage));
+	const threshold = Math.max(1, Math.min(99, midpoint));
+
 	const red = Math.round(
-		255 * (percentage <= 50 ? 1 : 1 - (percentage - 50) / 50)
+		255 * (percent <= threshold ? 1 : (100 - percent) / (100 - threshold))
 	);
-	const green = Math.round(255 * (percentage >= 50 ? 1 : percentage / 50));
+	const green = Math.round(
+		255 * (percent >= threshold ? 1 : percent / threshold)
+	);
 	return `#${red.toString(16).padStart(2, "0")}${green.toString(16).padStart(2, "0")}00`;
 }
 
 const MILLISECONDS_PER_DAY = 86400000;
-const now = new Date();
 const DB_PATH = join(import.meta.dirname, "..", "batch", "statusDB.sqlite3");
 const db = new DatabaseSync(DB_PATH);
+db.exec(
+	"PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;"
+);
 
 // Read config file
 /**
@@ -77,6 +86,9 @@ let body = `<!DOCTYPE html>
 <hr>\n`;
 
 // Get records for each monitor
+// Used to constrain results to only monitors belonging to this site
+const placeholders = siteConfig.monitors.map(() => "?").join(", ");
+
 // Figure out when to start looking (end time is end of current day in UTC, so work backwards)
 let startTimestamp = new Date().getTime();
 startTimestamp =
@@ -84,90 +96,109 @@ startTimestamp =
 	(startTimestamp % MILLISECONDS_PER_DAY) -
 	(config.data.daysToShow - 1) * MILLISECONDS_PER_DAY;
 
+/**
+ * Get all days for all monitors in one lookup
+ * @type {DailyRow[]}
+ */
+const dailyRows = db
+	.prepare(
+		`SELECT 
+			monitor,
+			FLOOR((time - ?) / ${MILLISECONDS_PER_DAY}) AS day_index,
+			SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS good_statuses,
+			SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS bad_statuses,
+			AVG(CASE WHEN status = 1 THEN latency ELSE NULL END) AS average_latency
+		FROM statuses
+		WHERE monitor IN (${placeholders}) AND time >= ?
+		GROUP BY monitor, day_index`
+	)
+	.all(startTimestamp, ...siteConfig.monitors, startTimestamp);
+
+/**
+ * Map of monitor + day index -> DailyRow record for fast lookup
+ * @type {Map<string, Map<number, DailyRow>}
+ */
+const statsByMonitor = new Map();
+for (const row of dailyRows) {
+	if (!statsByMonitor.has(row.monitor)) {
+		statsByMonitor.set(row.monitor, new Map());
+	}
+	statsByMonitor.get(row.monitor).set(row.day_index, row);
+}
+
+/**
+ * Get last row for all monitors in one lookup
+ * @type {LastRow[]}
+ */
+const latestRows = db
+	.prepare(
+		`SELECT s.monitor, s.status, s.time
+		FROM statuses s
+		INNER JOIN (
+			SELECT monitor, MAX(time) AS max_time
+			FROM statuses
+			WHERE monitor IN (${placeholders})
+			GROUP BY monitor
+		) latest ON s.monitor = latest.monitor AND s.time = latest.max_time`
+	)
+	.all(...siteConfig.monitors);
+
+/**
+ * Map of monitor -> LastRow for fast lookup
+ * @type {Map<string, LastRow>}
+ */
+const latestByMonitor = new Map(latestRows.map((r) => [r.monitor, r]));
+// Store highest time seen
+let maxUpdatedTime = 0;
+
 for (const monitorId of siteConfig.monitors) {
+	const monitorCfg = config.monitors[monitorId];
+	const lastStatus = latestByMonitor.get(monitorId);
+	if (lastStatus && lastStatus.time > maxUpdatedTime) {
+		maxUpdatedTime = lastStatus.time;
+	}
+
 	let statusColor = "#999999";
 	let statusText = "Disabled";
-	if (config.monitors[monitorId].active) {
-		/**
-		 * @type {StatusRow}
-		 */
-		const monitorLastStatus = db
-			.prepare(
-				`SELECT * FROM statuses WHERE monitor = ? ORDER BY time DESC LIMIT 1`
-			)
-			.get(monitorId);
-		if (monitorLastStatus.status === 1) {
-			statusColor = "#00ff00";
-			statusText = "Up";
-		} else {
-			statusColor = "#ff0000";
-			statusText = "Down";
-		}
+	if (monitorCfg.active && lastStatus) {
+		statusColor = lastStatus.status === 1 ? "#00ff00" : "#ff0000";
+		statusText = lastStatus.status === 1 ? "Up" : "Down";
 	}
-	body += `<h2 id="${htmlEscape(monitorId)}"><div style="display: inline-block; margin-right: 5px; width: 20px; height: 20px; border-radius: 50%; background-color: ${htmlEscape(statusColor)};" title="${htmlEscape(statusText)}"></div>${htmlEscape(config.monitors[monitorId].name)}</h2>\n<div style="font-size: 0px">\n`;
-	let startTime = startTimestamp;
-	let endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
+
+	body += `<h2 id="${htmlEscape(monitorId)}"><div style="display: inline-block; margin-right: 5px; width: 20px; height: 20px; border-radius: 50%; background-color: ${htmlEscape(statusColor)};" title="${htmlEscape(statusText)}"></div>${htmlEscape(monitorCfg.name)}</h2>\n<div style="font-size: 0px">\n`;
+
+	const monitorDays = statsByMonitor.get(monitorId);
+	let currentDayStart = startTimestamp;
+
 	for (let i = 0; i < config.data.daysToShow; i++) {
-		// Compute uptime percentage
-		/**
-		 * @type {number}
-		 */
-		const goodStatuses = db
-			.prepare(
-				`SELECT COUNT(time) AS good_statuses FROM statuses WHERE monitor = ? AND status = 1 AND time >= ? AND time <= ?`
-			)
-			.get(monitorId, startTime, endTime).good_statuses;
-		/**
-		 * @type {number}
-		 */
-		const badStatuses = db
-			.prepare(
-				`SELECT COUNT(time) AS bad_statuses FROM statuses WHERE monitor = ? AND status = 0 AND time >= ? AND time <= ?`
-			)
-			.get(monitorId, startTime, endTime).bad_statuses;
-		/**
-		 * @type {number}
-		 */
-		const averageLatency = db
-			.prepare(
-				`SELECT AVG(latency) AS average_latency FROM statuses WHERE monitor = ? AND status = 1 AND latency IS NOT NULL AND time >= ? AND time <= ?`
-			)
-			.get(monitorId, startTime, endTime).average_latency;
-		// Fallback color for no data
+		const dayStats = monitorDays?.get(i);
+		const good = dayStats?.good_statuses ?? 0;
+		const bad = dayStats?.bad_statuses ?? 0;
+		const avgLatency = dayStats?.average_latency ?? null;
+
 		let color = "#999999";
-		// Block title
-		let title = `${new Date(startTime).toUTCString().replace(" 00:00:00", "")} - No data`;
-		if (goodStatuses + badStatuses > 0) {
-			// Compute color if there is data
-			const percentage =
-				(goodStatuses / (goodStatuses + badStatuses)) * 100;
+		const dateLabel = new Date(currentDayStart)
+			.toUTCString()
+			.replace(" 00:00:00", "");
+		let title = `${dateLabel} - No data`;
+
+		if (good + bad > 0) {
+			const percentage = (good / (good + bad)) * 100;
 			color = percentageToColor(percentage);
-			title = `${new Date(startTime).toUTCString().replace(" 00:00:00", "")} - ${Math.round(percentage)}%`;
+			title = `${dateLabel} - ${Math.round(percentage)}%`;
 		}
-		if (averageLatency !== null) {
-			title += ` - ${Math.round(averageLatency)} ms`;
+		if (avgLatency !== null) {
+			title += ` - ${Math.round(avgLatency)} ms`;
 		}
-		// Insert colored rectangle
+
 		body += `<div style="display: inline-block; margin-right: 1px; height: 25px; width: 10px; background-color: ${htmlEscape(color)};" title="${htmlEscape(title)}"></div>\n`;
-		// Increase start and end time
-		startTime += MILLISECONDS_PER_DAY;
-		endTime = startTime + MILLISECONDS_PER_DAY - 1; // Just before start of next day
+		currentDayStart += MILLISECONDS_PER_DAY;
 	}
 	body += "</div>\n";
 }
 
-const placeholders = siteConfig.monitors.map(() => "?").join(", ");
-/**
- * @type {StatusRow}
- */
-let lastRecord = db
-	.prepare(
-		`SELECT * FROM statuses WHERE monitor IN (${placeholders}) ORDER BY time DESC LIMIT 1`
-	)
-	.get(...siteConfig.monitors);
-
 body += `<hr>
-Last updated: ${new Date(lastRecord?.time).toUTCString()}
+Last updated: ${maxUpdatedTime ? new Date(maxUpdatedTime).toUTCString() : "Never"}
 </body>
 </html>`;
 
