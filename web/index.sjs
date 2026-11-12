@@ -42,9 +42,6 @@ function percentageToColor(percentage, midpoint = 98) {
 const MILLISECONDS_PER_DAY = 86400000;
 const DB_PATH = join(import.meta.dirname, "..", "batch", "statusDB.sqlite3");
 const db = new DatabaseSync(DB_PATH);
-db.exec(
-	"PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;"
-);
 
 // Read config file
 /**
