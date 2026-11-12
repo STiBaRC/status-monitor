@@ -95,13 +95,14 @@ See [types/config.js](types/config.js) for JSDoc syntax
 3. Extract the contents of this repo somewhere on your server
 4. Create a [config](#config-format) and place it at the root of the cloned repo with the name `statusConfig.json`
 5. Point your site to the "web" folder of the repo
-6. Set up a cron job to run [batch/statusBatch.js](batch/statusBatch.js) however often you'd like
-7. Done!
+6. Make the batch folder owned by the user SpruceHTTP is configured to run as (usually `secureweb`). This is because SQLite will make WAL files next to the database in the same folder and needs permissions to write there
+7. Set up a cron job to run [batch/statusBatch.js](batch/statusBatch.js) however often you'd like
+8. Done!
 
 ## Example cron
 ```
-# Run status batch job every 5 minutes
-*/5 *	* * *	root	node /var/www/status/batch/statusBatch.js
+# Run status batch job as SpruceHTTP user every 5 minutes
+*/5 *	* * *	secureweb	node /var/www/status/batch/statusBatch.js
 ```
 
 ---
