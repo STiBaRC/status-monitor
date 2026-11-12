@@ -116,11 +116,30 @@ const dailyRows = db
  * @type {Map<string, Map<number, DailyRow>}
  */
 const statsByMonitor = new Map();
+/**
+ * @typedef {Object} AggregateStats
+ * @property {number} up
+ * @property {number} latency
+ * @property {number} overallCount
+ */
+/**
+ * Map of monitor -> AggregateStats for fast lookup of overall average uptime for a monitor
+ * @type {Map<string, AggregateStats>}
+ */
+const aggregateUptimeByMonitor = new Map();
 for (const row of dailyRows) {
 	if (!statsByMonitor.has(row.monitor)) {
 		statsByMonitor.set(row.monitor, new Map());
 	}
+	if (!aggregateUptimeByMonitor.has(row.monitor)) {
+		aggregateUptimeByMonitor.set(row.monitor, { up: 0, latency: 0, overallCount: 0 });
+	}
 	statsByMonitor.get(row.monitor).set(row.day_index, row);
+	const agg = aggregateUptimeByMonitor.get(row.monitor);
+	agg.overallCount += row.good_statuses + row.bad_statuses;
+	agg.up += row.good_statuses;
+	agg.latency += row.average_latency * row.good_statuses;
+	aggregateUptimeByMonitor.set(row.monitor, agg);
 }
 
 /**
@@ -162,7 +181,17 @@ for (const monitorId of siteConfig.monitors) {
 		statusText = lastStatus.status === 1 ? "Up" : "Down";
 	}
 
-	body += `<h2 id="${htmlEscape(monitorId)}"><div style="display: inline-block; margin-right: 5px; width: 20px; height: 20px; border-radius: 50%; background-color: ${htmlEscape(statusColor)};" title="${htmlEscape(statusText)}"></div>${htmlEscape(monitorCfg.name)}</h2>\n<div style="font-size: 0px">\n`;
+	const agg = aggregateUptimeByMonitor.get(monitorId);
+	let overallUptime = null;
+	let overallLatency = null;
+	let aggregateStatsStr = "";
+	if (agg !== undefined) {
+		overallUptime = Math.floor((agg.up / agg.overallCount) * 1000) / 10;
+		overallLatency = Math.round(agg.latency / agg.up);
+		aggregateStatsStr = ` - ${htmlEscape(overallUptime.toString())}% - ${htmlEscape(overallLatency.toString())} ms`;
+	}
+
+	body += `<h2 id="${htmlEscape(monitorId)}"><div style="display: inline-block; margin-right: 5px; width: 20px; height: 20px; border-radius: 50%; background-color: ${htmlEscape(statusColor)};" title="${htmlEscape(statusText)}"></div>${htmlEscape(monitorCfg.name)}${aggregateStatsStr}</h2>\n<div style="font-size: 0px">\n`;
 
 	const monitorDays = statsByMonitor.get(monitorId);
 	let currentDayStart = startTimestamp;
